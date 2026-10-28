@@ -1,0 +1,43 @@
+name: Close stale pull requests
+
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        description: "Only log which PRs would be marked or closed; change nothing"
+        type: boolean
+        default: false
+      days_before_pr_stale:
+        description: "Days without activity before a PR is marked stale"
+        type: number
+        default: 10
+      days_before_pr_close:
+        description: "Days a stale PR stays open before it is closed"
+        type: number
+        default: 7
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/stale@v11
+        with:
+          days-before-pr-stale: ${{ inputs.days_before_pr_stale }}
+          days-before-pr-close: ${{ inputs.days_before_pr_close }}
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          stale-pr-label: stale
+          exempt-pr-labels: keep-open,dependencies
+          exempt-draft-pr: false
+          stale-pr-message: >
+            ${{ format('This pull request has had no activity for {0} days. It closes in {1} days
+            unless somebody comments or pushes. To keep it open for longer, add the
+            `keep-open` label.', inputs.days_before_pr_stale, inputs.days_before_pr_close) }}
+          close-pr-message: >
+            ${{ format('Closed after {0} more days with no activity since it was marked stale.
+            Reopen it if the work continues.', inputs.days_before_pr_close) }}
+          operations-per-run: 200
+          debug-only: ${{ inputs.dry_run }}
