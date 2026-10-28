@@ -7,6 +7,18 @@ on:
         description: "Only log which PRs would be marked or closed; change nothing"
         type: boolean
         default: false
+      days_before_pr_stale:
+        description: "Days without activity before a PR is marked stale"
+        type: number
+        default: 10
+      days_before_pr_close:
+        description: "Days a stale PR stays open before it is closed"
+        type: number
+        default: 7
+      exempt_pr_labels:
+        description: "Comma-separated labels that keep a PR open"
+        type: string
+        default: keep-open,dependencies
 
 jobs:
   stale:
@@ -17,18 +29,19 @@ jobs:
     steps:
       - uses: actions/stale@v11
         with:
-          days-before-pr-stale: 10
-          days-before-pr-close: 7
+          days-before-pr-stale: ${{ inputs.days_before_pr_stale }}
+          days-before-pr-close: ${{ inputs.days_before_pr_close }}
           days-before-issue-stale: -1
           days-before-issue-close: -1
           stale-pr-label: stale
-          exempt-pr-labels: keep-open,dependencies
+          exempt-pr-labels: ${{ inputs.exempt_pr_labels }}
           exempt-draft-pr: false
           stale-pr-message: >
-            This pull request has had no activity for 10 days. It closes in 7 days
+            ${{ format('This pull request has had no activity for {0} days. It closes in {1} days
             unless somebody comments or pushes. To keep it open for longer, add the
-            `keep-open` label.
+            `keep-open` label.', inputs.days_before_pr_stale, inputs.days_before_pr_close) }}
           close-pr-message: >
-            Closed after 17 days with no activity. Reopen it if the work continues.
+            ${{ format('Closed after {0} more days with no activity since it was marked stale.
+            Reopen it if the work continues.', inputs.days_before_pr_close) }}
           operations-per-run: 200
           debug-only: ${{ inputs.dry_run }}
