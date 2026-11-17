@@ -1,0 +1,49 @@
+# Org-wide PR check: fails only when a PR adds a NEW vulnerability (DEVOPS-1276).
+# Old vulnerabilities don't block anyone; team on-calls handle those (SOP, DEVOPS-1215).
+#
+# This file is not meant to run in this repo only: an org ruleset ("Require workflows to pass")
+# runs it on the default branch of every repo. Google's reusable workflow scans the target branch
+# and the PR branch with osv-scanner and fails if the PR adds a vulnerability.
+#
+# Why it lives here: GitHub only runs a required workflow from a repo that is at least as visible
+# as the target repo. This repo is public, so the check works on private, internal and public repos.
+# It used to live in the private security-alerts repo and failed on every internal and public repo.
+# Bot code, docs and the dashboard stay in security-alerts.
+# Any change here changes the PR check for every repo in the org, so DevOps reviews it (CODEOWNERS).
+#
+# - Pinned by commit SHA (same reason as the Trivy images: a tag can be moved).
+# - upload-sarif: false, so we only use the pass/fail check and don't need code scanning.
+# - The permissions below are what Google's job asks for; a caller must grant at least that,
+#   even with upload-sarif off.
+# - merge_group: repos with a merge queue need the check to report there too. The scan needs a
+#   PR base branch, so on merge_group the job is skipped, and a skipped job counts as passed.
+# - Dependabot and Renovate PRs are skipped. A fix often moves a package to a version that still
+#   has a smaller CVE; blocking those PRs would block the fix itself. If a bot update adds a new
+#   vulnerability, Dependabot alerts report it after merge, like before.
+# - False positives: an osv-scanner.toml in the repo, with a reason and an expiry
+#   (https://google.github.io/osv-scanner/configuration/).
+name: osv-scanner (new vulnerabilities)
+
+on:
+  pull_request:
+  merge_group:
+
+# A new push to the same PR cancels the scan that is still running, so scans don't stack up.
+concurrency:
+  group: osv-scanner-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  scan-pr:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'renovate[bot]'
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
+    with:
+      upload-sarif: false

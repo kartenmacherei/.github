@@ -1,0 +1,4 @@
+# The osv-scanner workflow runs as a required PR check on every repo in the org.
+# DevOps reviews every change to it.
+/.github/workflows/osv-scanner-pr.yml   @kartenmacherei/devops
+/.github/CODEOWNERS                     @kartenmacherei/devops
